@@ -18,8 +18,9 @@ jobs:
         shell: pwsh
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
+      # https://www.msys2.org/docs/ci/ – MSYS statt UCRT64, da msys-Toolchain (kein MinGW)
       - name: MSYS2 einrichten (MSYS, Update + Pakete)
         uses: msys2/setup-msys2@v2
         with:
@@ -33,8 +34,11 @@ jobs:
             gettext-devel
             libzstd-devel libidn2-devel libpsl-devel brotli-devel libnghttp2-devel
             dos2unix wget unzip
+          cache: true
+          path-type: minimal
+          release: true
 
-      - name: Pipeline (Patches, Vendor, librepfunc, Build, Gate, Paket)
+      - name: Pipeline (Patches, Vendor, librepfunc, Build, Gate, Paket, Smoke)
         run: |
           set -euo pipefail
           bash tools/build.sh --skip-install
@@ -45,8 +49,50 @@ jobs:
           pacman -Q > dist/w_scan_cpp-msys-x86_64/msys-packages.txt
           gcc -dumpmachine >> dist/w_scan_cpp-msys-x86_64/msys-packages.txt
 
+      - name: --help-Gate (dist-Build lauffaehig)
+        run: |
+          set -euo pipefail
+          ./dist/w_scan_cpp-msys-x86_64/w_scan_cpp.exe --help > dist-help.txt 2>&1
+          grep -q "w_scan_cpp Version" dist-help.txt
+
       - name: Artifact hochladen
         uses: actions/upload-artifact@v4
         with:
           name: w_scan_cpp-msys-x86_64
           path: dist/w_scan_cpp-msys-x86_64
+
+      # Doku-FAQ: haengende msys-Prozesse (gnupg u.a.) am Ende killen
+      - name: MSYS-Restprozesse beenden
+        if: always()
+        run: taskkill /F /FI "MODULES eq msys-2.0.dll"
+        shell: pwsh
+
+  # Tag pushen (z.B. v2026.09.08) -> GitHub-Release mit ZIP-Paket
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      # --generate-notes braucht Git-Historie + Tags
+      - name: Checkout (fuer Release-Notes)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Artifact laden
+        uses: actions/download-artifact@v4
+        with:
+          name: w_scan_cpp-msys-x86_64
+          path: w_scan_cpp-msys-x86_64
+
+      - name: Release-ZIP packen
+        run: Compress-Archive -Path w_scan_cpp-msys-x86_64 -DestinationPath w_scan_cpp-msys-x86_64.zip
+        shell: pwsh
+
+      - name: GitHub-Release erstellen
+        run: gh release create "${{ github.ref_name }}" --title "w_scan_cpp-msys ${{ github.ref_name }}" --generate-notes w_scan_cpp-msys-x86_64.zip
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

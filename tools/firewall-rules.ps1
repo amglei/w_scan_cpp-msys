@@ -3,8 +3,8 @@
 # Komplett in eine PowerShell MIT Admin-Rechten pasten und ausfuehren.
 $ErrorActionPreference = 'Stop'
 
-$distExe  = 'C:\Temp\wsc\dist\w_scan_cpp-msys-x86_64\w_scan_cpp.exe'
-$buildExe = 'C:\Temp\wsc\w-scan-cpp-20260515+dfsg\w_scan_cpp.exe'
+$distExe  = '.\dist\w_scan_cpp-msys-x86_64\w_scan_cpp.exe'
+$buildExe = '.\w-scan-cpp-20260515+dfsg\w_scan_cpp.exe'
 
 # 1) Alte Public-only w_scan-Regeln aufraeumen (werden unten neu angelegt)
 Get-NetFirewallRule -DisplayName 'w_scan_cpp*' -ErrorAction SilentlyContinue | Remove-NetFirewallRule
