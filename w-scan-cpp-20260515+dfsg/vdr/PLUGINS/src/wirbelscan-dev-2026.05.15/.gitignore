@@ -1,0 +1,46 @@
+# Prerequisites
+*.d
+.dependencies
+
+# Compiled Object files
+*.lo
+*.o
+*.obj
+*.mo
+
+# Compiled Dynamic libraries
+*.so
+*.so.*
+*.dylib
+*.dll
+
+
+# Compiled Static libraries
+*.la
+*.a
+*.lib
+
+# Executables
+*.out
+
+# not part of package.
+README.md
+*.pot
+
+# texts, logs, patches
+*.diff
+*.patch
+*.txt
+*.text
+*.log
+
+#/******************************************************************************
+# * Packages
+# *****************************************************************************/
+
+*.7z
+*.tgz
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip

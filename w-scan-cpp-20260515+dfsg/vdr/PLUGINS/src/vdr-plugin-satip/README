@@ -1,0 +1,238 @@
+/*******************************************************************************
+ * This is a fork of the vdr-plugin-satip, see
+ *    https://github.com/rofafor/vdr-plugin-satip.
+ *
+ * It is adopted to be used in w_scan_cpp, in parallel to be used in VDR.
+ * For copyright and remarks, please respect the original authors choice,
+ * see below.
+ *
+ * Latest version of this fork:
+ *    https://github.com/wirbel-at-vdr-portal/vdr-plugin-satip
+ * Author of fork and contact, see w_scan_cpp/README:
+ *    https://github.com/wirbel-at-vdr-portal/w_scan_cpp/blob/main/README
+ *
+ * About versioning.
+ *    This fork uses YYYYMMDD as versioning, to be clearly distinguishable
+ *    from the original authors versioning, which uses MAJOR.MINOR.PATCH
+ *
+ * Requirements.
+ * In addition to the original requirements below, the following sources
+ * are needed to build this version of the plugin:
+ *    - librepfunc >= 1.7.0
+ *      https://github.com/wirbel-at-vdr-portal/librepfunc
+ *
+ *
+ * Please read and respect the original authors README below.
+ *  -- wirbel
+ ******************************************************************************/
+This is an SAT>IP plugin for the Video Disk Recorder (VDR).
+
+Written by:                  Rolf Ahrenberg
+                             < R o l f . A h r e n b e r g @ s c i . f i >
+
+Project's homepage:          https://github.com/rofafor/vdr-plugin-satip
+
+Latest version available at: https://github.com/rofafor/vdr-plugin-satip/releases
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License version 2 as
+published by the Free Software Foundation.
+See the file COPYING for more information.
+
+Requirements:
+
+- Libcurl >= 7.36.0 - the multiprotocol file transfer library with RTSP support
+  http://curl.haxx.se/libcurl/
+
+- PugiXML - Light-weight, simple and fast XML parser for C++
+  http://pugixml.org/
+  or
+  TinyXML - a simple, small, C++ XML parser
+  http://www.grinninglizard.com/tinyxml/
+
+- Glibc >= 2.12 - the GNU C library (recvmmsg)
+  http://www.gnu.org/software/libc/
+
+Description:
+
+This plugin integrates SAT>IP network devices seamlessly into VDR.
+You can use any SAT>IP channel like any other normal DVB channel for
+live viewing, recording, etc. The plugin also features full section
+filtering capabilities which allow for example EIT information to be
+extracted from the incoming stream.
+
+Installation:
+
+tar -xzf /put/your/path/here/vdr-satip-X.Y.Z.tgz
+make -C satip-X.Y.Z install
+
+Configuration:
+
+The plugin accepts a "--devices" (-d) command-line parameter defaulting
+to two. This parameter defines how many simultaneous transponders can
+be received, if there are available SAT>IP tuners.
+
+The plugin accepts also a "--server" (-s) command-line parameter, that
+can be used to manually configure static SAT>IP servers if autodetection
+via UPnP somehow can't be used. Multiple service entries can be given
+separated by a semicolon:
+
+[<srcaddress>@]<ipaddress>[:<port>]|<model>[:<filter>]|<description>[:<quirk>];...
+
+- srcaddress (Optional)  Source address can be used to define used
+                         networking interface on a host, e.g. 127.0.0.1.
+- ipaddress              IP address of SAT>IP server, e.g. 127.0.0.1.
+- port (Optional)        IP port number of SAT>IP server, e.g 443.
+- model                  Model defines DVB modulation system (DVBS2,
+                         DVBT2, DVBT, DVBC) and number of available
+                         frontends separated by a hyphen, e.g. DVBT2-4.
+- filter (Optional)      Filter can be used to limit satellite frontends
+                         to certain satellite position, e.g. S19.2E.
+- description            Friendly name of SAT>IP server. This is used
+                         for autodetection of quirks.
+- quirk (Optional)       Quirks are non-standard compliant features and
+                         bug fixes of SAT>IP server  defined by a
+                         hexadecimal number. Multiple quirks can be
+                         defined by combining values by addition:
+
+                           0x01: Fix session id bug
+                           0x02: Fix play parameter (addpids/delpids) bug
+                           0x04: Fix frontend locking bug
+                           0x08: Support for RTP over TCP
+                           0x10: Support the X_PMT protocol extension
+                           0x20: Support the CI TNR protocol extension
+                           0x40: Fix auto-detection of pilot tones bug
+                           0x80: Fix re-tuning bug by teardowning a session
+
+Examples:
+
+vdr -P 'satip -s 192.168.0.1|DVBS2-2,DVBT2-2|OctopusNet'
+vdr -P 'satip -s 192.168.0.1|DVBS2-4|OctopusNet;192.168.0.2|DVBT2-4|minisatip:0x18'
+vdr -P 'satip -s 192.168.0.1:554|DVBS2-2:S19.2E|OctopusNet;192.168.0.2:8554|DVBS2-4:S19.2E,S1W|minisatip'
+
+The plugin accepts a "--portrange" (-p) command-line parameter, that can
+be used to manually specify the RTP & RTCP port range and therefore
+enables using the plugin through a NAT (e.g. Docker bridged network).
+A minimum of 2 ports per device is required.
+
+SAT>IP satellite positions (aka. signal sources) shall be defined via
+sources.conf. If the source description begins with a number, it's used
+as SAT>IP signal source selection parameter. A special number zero can
+be used to disable the source. Otherwise, the default parameter is one:
+
+S19.2E  Astra 1KR/1L/1M/2C
+=> Signal source = 1
+
+S19.2E  2
+=> Signal source = 2
+
+S19.2E  3 Astra 1KR/1L/1M/2C
+=> Signal source = 3
+
+S19.2E 0 Astra 1KR/1L/1M/2C
+=> Source is disabled
+
+A channel can be assigned into a specific SAT>IP frontend by giving the
+identifier number in RID field of a channels.conf entry:
+FE = RID % 100
+Valid range: 1 ... 99
+
+Setup menu:
+
+- Operating mode = off        If you want exclude all SAT>IP devices
+                   low        from VDR's device handling, set this
+                   normal     option to "off". Otherwise, if you want
+                   high       to keep SAT>IP at a low priority when
+                              selecting available devices, set this
+                              option to "low". Similarly, the "high"
+                              value prefers the SAT>IP over the local
+                              DVB cards when selecting available devices.
+- Use CI extension = no       If you want to use the CI extension found
+                              in some SAT>IP hardware (e.g. Digital
+                              Devices OctopusNet), set this option to
+                              "yes".
+- CICAM #<slot> = <system>    If you want to assign a CA system into
+                              a specific CI slot, set this option to
+                              a named one. Use "---" for autoselection.
+- Enable EPG scanning = yes   If you want exclude all SAT>IP devices
+                              from VDR's EIT background scanning, set
+                              this option to "no".
+- Disabled sources = none     If your SAT>IP servers don't have certain
+                              satellite positions available you can
+                              disable them via this option.
+- Disabled filters = none     Certain section filters might cause some
+                              unwanted behaviour to VDR such as time
+                              being falsely synchronized etc. This option
+                              allows creation of blacklists of ill-behaving
+                              filters. If this option is set to a non-zero
+                              value, the menu page will contain that many
+                              "Disable filter" options which allow you
+                              to disable the individual section filters.
+                              Valid range: "none" = 0 ... 7
+- Transport mode = unicast    If you want to use the non-standard
+                   multicast  RTP-over-TCP transport mode, set this option
+                   rtp-o-tcp  accordingly. Otherwise, the transport
+                              mode will be RTP-over-UDP via unicast or
+                              multicast.
+- Enable frontend reuse = yes Certain devices might have artifacts if
+                              multiple channels are assigned to the same
+                              frontend. If you want to avoid such a
+                              frontend assignment, set this option to "no". 
+- [Red:Scan]                  Forces network scanning of SAT>IP hardware.
+- [Yellow:Devices]            Opens SAT>IP device status menu.
+- [Blue:Info]                 Opens SAT>IP information/statistics menu.
+- [Ok]                        Opens information menu of selected SAT>IP
+                              device.
+
+Information menu:
+
+- [Red:General]              Opens the general information page.
+- [Green:Pids]               Opens the pid statistics page.
+- [Yellow:Filters]           Opens the section filter statistics page.
+- [Blue:Bits/bytes]          Toggles between bits and bytes mode.
+
+Notes:
+
+- If you are having problems receiving DVB-S2 channels, make sure your
+  channels.conf entry contains correct pilot tone setting.
+
+- The stream id "-1" states about unsuccessful tuning. This might be a
+  result of invalid channel parameters or lack of free SAT>IP tuners.
+
+- If the plugin doesn't detect your SAT>IP network device, make sure
+  your setup doesn't have firewalled the UDP port 1900.
+
+- Stream decryption requires a separate CAM plugin that works without
+  direct access to any DVB card devices. Also the integrated CAM slots
+  in Octopus Net devices are supported.
+
+- Tracing can be set on/off dynamically via command-line switch or
+  SVDRP command.
+
+- OctopusNet firmware 1.0.40 or greater recommended.
+
+- Inverto OEM firmware 1.17.0.120 or greater recommended.
+  The firmware 1.16.0.120 can be downloaded and installed
+  from their webpage: http://www.inverto.tv/support/
+  An update to a newer firmware should be offered afterwards.
+
+- FRITZ!OS 7.00 or greater recommended for FRITZ!Box Cable devices.
+  Older firmware versions require both PlayPids and ForceLock quirks.
+
+- If you are experiencing glitches in the video stream, one possible
+  reason can be buffer overflows in RTP receive sockets. You can verify
+  this by checking "receive buffer errors" counter by running "netstat -s"
+  command. If the counter increases every time a video glitch happens,
+  you should try to tweak the RTP receive buffer size with the "--rcvbuf"
+  (-r) plugin parameter.
+  A good starting point for the buffer size is to double the operating
+  system default value until errors disappear or the maximum value is
+  reached. You can check these values in Linux by checking the kernel
+  parameters:
+  $ cat /proc/sys/net/core/rmem_default
+  $ cat /proc/sys/net/core/rmem_max
+
+Acknowledgements:
+
+- Big thanks to Digital Devices GmbH for providing the Octopus Net
+  hardware for development!
